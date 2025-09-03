@@ -1,18 +1,24 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:stock_maintain/screens/cloudnary.dart';
-
-import 'firebase_options.dart';
-import 'home_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stock_maintain/repo/firebase_options.dart';
+import 'contact_screen.dart';
 import 'login_Screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(const MyApp());
+
+  try {
+    // Initialize Firebase with the generated options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -39,8 +45,8 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      return ProductCatalogScreen();
-      //return UploadScreen();
+      //return ProductCatalogScreen();
+      return ContactInfoScreen();
     } else {
       return const LoginPage();
     }

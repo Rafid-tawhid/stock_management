@@ -1,33 +1,13 @@
 {
   "project_info": {
-    "project_number": "398749114662",
-    "firebase_url": "https://my-blog-309118-default-rtdb.firebaseio.com",
-    "project_id": "my-blog-309118",
-    "storage_bucket": "my-blog-309118.appspot.com"
+    "project_number": "124817059380",
+    "project_id": "contactmanagement-6820d",
+    "storage_bucket": "contactmanagement-6820d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:398749114662:android:644a074f7362a8b68021e7",
-        "android_client_info": {
-          "package_name": "com.example.my_messenger"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBrRcPqgVi6qhL6SJtQvHCFRd6EHCZKv3Y"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:398749114662:android:0ef69516ad12cabf8021e7",
+        "mobilesdk_app_id": "1:124817059380:android:45b16382043c374b3b2461",
         "android_client_info": {
           "package_name": "com.example.stock_maintain"
         }
@@ -35,45 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBrRcPqgVi6qhL6SJtQvHCFRd6EHCZKv3Y"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:398749114662:android:1c1e3fc6bb7436f48021e7",
-        "android_client_info": {
-          "package_name": "com.example.stock_manage"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBrRcPqgVi6qhL6SJtQvHCFRd6EHCZKv3Y"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:398749114662:android:4807b0c94db8e0578021e7",
-        "android_client_info": {
-          "package_name": "com.flutter.menu"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBrRcPqgVi6qhL6SJtQvHCFRd6EHCZKv3Y"
+          "current_key": "AIzaSyDAWIDxQwDgfBdoBV7BiaKA-sF3t9XLlMI"
         }
       ],
       "services": {
