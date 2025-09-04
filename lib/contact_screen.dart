@@ -1,6 +1,8 @@
 // screens/contact_info_screen.dart
 import 'dart:io';
+import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart' hide Uint8List;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +12,7 @@ import 'package:stock_maintain/riverpod/contact_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'dart:typed_data'; // <-- make sure this is present
 import 'contact_list_screen.dart';
 import 'models/contact_model.dart';
 
@@ -91,6 +93,65 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
     }
   }
 
+  // Future<void> _saveContact() async {
+  //   final state = ref.read(contactProvider);
+  //
+  //   if (state.personName.isEmpty) {
+  //     _showError('Please enter person name');
+  //     return;
+  //   }
+  //
+  //   if (state.phoneNumber.isEmpty) {
+  //     _showError('Please enter phone number');
+  //     return;
+  //   }
+  //
+  //   ref.read(contactProvider.notifier).setLoading(true);
+  //   ref.read(contactProvider.notifier).setUploadProgress(0.0);
+  //   ref.read(contactProvider.notifier).setUploadStatus('Saving contact...');
+  //
+  //   try {
+  //     // Generate unique ID for this contact
+  //     final String contactId = const Uuid().v4();
+  //     final DateTime now = DateTime.now();
+  //
+  //     // Prepare contact data
+  //     final contactData = {
+  //       'id': contactId,
+  //       'timestamp': now,
+  //       'personName': state.personName,
+  //       'companyName': state.companyName,
+  //       'location': state.location,
+  //       'phoneNumber': state.phoneNumber,
+  //       'email': state.email,
+  //       'contactType': state.contactType,
+  //       'notes': state.notes,
+  //       'status': 'Active',
+  //       'userId': FirebaseAuth.instance.currentUser?.uid,
+  //     };
+  //
+  //     // Save to Firestore
+  //     ref.read(contactProvider.notifier).setUploadStatus('Saving contact details...');
+  //     ref.read(contactProvider.notifier).setUploadProgress(0.8);
+  //
+  //     await FirebaseFirestore.instance
+  //         .collection('contacts')
+  //         .doc(contactId)
+  //         .set(contactData);
+  //
+  //     ref.read(contactProvider.notifier).setUploadProgress(1.0);
+  //     ref.read(contactProvider.notifier).setUploadStatus('Contact saved successfully!');
+  //
+  //     _showSuccess('Contact "${state.personName}" saved successfully!');
+  //     ref.read(contactProvider.notifier).clearForm();
+  //   } catch (e) {
+  //     _showError('Failed to save contact: $e');
+  //   } finally {
+  //     ref.read(contactProvider.notifier).setLoading(false);
+  //   }
+  // }
+
+  //new
   Future<void> _saveContact() async {
     final state = ref.read(contactProvider);
 
@@ -113,7 +174,22 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
       final String contactId = const Uuid().v4();
       final DateTime now = DateTime.now();
 
-      // Prepare contact data
+      // Upload images and get download URLs
+      // List<String> imageUrls = [];
+      // if (state.contactImages.isNotEmpty) {
+      //   ref.read(contactProvider.notifier).setUploadStatus('Uploading images...');
+      //
+      //   // Upload each image and collect URLs
+      //   imageUrls = await _uploadContactImages(
+      //     contactId: contactId,
+      //     images: state.contactImages,
+      //     onProgress: (progress) {
+      //       ref.read(contactProvider.notifier).setUploadProgress(progress * 0.7); // 70% for images
+      //     },
+      //   );
+      // }
+
+      // Prepare contact data with image URLs
       final contactData = {
         'id': contactId,
         'timestamp': now,
@@ -126,11 +202,13 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         'notes': state.notes,
         'status': 'Active',
         'userId': FirebaseAuth.instance.currentUser?.uid,
+        // 'imageUrls': imageUrls, // Add image URLs to the document
+        // 'imageCount': imageUrls.length,
       };
 
       // Save to Firestore
       ref.read(contactProvider.notifier).setUploadStatus('Saving contact details...');
-      ref.read(contactProvider.notifier).setUploadProgress(0.8);
+      ref.read(contactProvider.notifier).setUploadProgress(0.9);
 
       await FirebaseFirestore.instance
           .collection('contacts')
@@ -148,6 +226,65 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
       ref.read(contactProvider.notifier).setLoading(false);
     }
   }
+
+  //new
+  Future<List<String>> _uploadContactImages({
+    required String contactId,
+    required List<XFile> images,
+    required Function(double) onProgress,
+  }) async {
+    if (images.isEmpty) return [];
+
+    final List<String> downloadUrls = [];
+    final FirebaseStorage storage = FirebaseStorage.instance;
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? 'anonymous';
+
+    for (int i = 0; i < images.length; i++) {
+      final XFile image = images[i];
+      final String fileName =
+          'contact_${contactId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+
+      final Reference storageRef = storage
+          .ref()
+          .child('contacts')
+          .child(userId)
+          .child(contactId)
+          .child(fileName);
+
+      try {
+
+        final Uint8List imageData = await image.readAsBytes();
+        final SettableMetadata metadata = SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'uploadedBy': userId,
+            'contactId': contactId,
+            'originalName': image.name,
+            'uploadDate': DateTime.now().toIso8601String(),
+          },
+        );
+
+        final UploadTask uploadTask = storageRef.putData(imageData, metadata);
+
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          final double progress = snapshot.totalBytes > 0
+              ? snapshot.bytesTransferred / snapshot.totalBytes
+              : 0;
+          final double overallProgress = (i + progress) / images.length;
+          onProgress(overallProgress);
+        });
+
+        final TaskSnapshot snapshot = await uploadTask;
+        final String downloadUrl = await snapshot.ref.getDownloadURL();
+        downloadUrls.add(downloadUrl);
+      } catch (e) {
+        print('Failed to upload image $i: $e');
+      }
+    }
+
+    return downloadUrls;
+  }
+
 
   void _showError(String message) {
     debugPrint('Error: $message');
