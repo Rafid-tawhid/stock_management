@@ -1,4 +1,5 @@
 // screens/contact_list_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stock_maintain/riverpod/show_provider.dart';
@@ -323,6 +324,32 @@ class _ContactCard extends StatelessWidget {
 
   const _ContactCard({required this.contact});
 
+  AlertDialog _buildDeleteDialog(Contact contact,BuildContext context) {
+    return AlertDialog(
+      title: const Text('Delete Contact'),
+      content: Text(
+          'Are you sure you want to delete ${contact.personName} from your contacts?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(), // Close the dialog
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            FirebaseFirestore.instance.collection('contacts').doc(contact.id).delete();
+
+            Navigator.of(context).pop(); // Close the dialog
+          },
+          child: const Text(
+            'Delete',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      ],
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -335,6 +362,14 @@ class _ContactCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
           onTap: () => _showContactDetails(context, contact),
+          onLongPress: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return _buildDeleteDialog(contact, context);
+              },
+            );
+          },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
