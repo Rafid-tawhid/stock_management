@@ -1,9 +1,11 @@
 // screens/contact_info_screen.dart
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:stock_maintain/login_Screen.dart';
 import 'package:stock_maintain/riverpod/contact_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -171,25 +173,29 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(contactProvider);
-
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Contact Information'),
-        backgroundColor: Colors.blue,
+        backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.read(contactProvider.notifier).clearForm(),
-            tooltip: 'Clear Form',
-          ),
+
           IconButton(
             icon: const Icon(Icons.list),
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context)=>ContactListScreen()));
             },
             tooltip: 'Show Contact',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              FirebaseAuth.instance.signOut();
+              Navigator.push(context, CupertinoPageRoute(builder: (context)=>LoginPage()));
+            },
+            tooltip: 'Clear Form',
           ),
         ],
       ),
@@ -226,13 +232,13 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          const Center(
+           Center(
             child: Text(
               'Add New Contact',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -543,7 +549,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
       child: ElevatedButton(
         onPressed: _saveContact,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: const TextStyle(
