@@ -1,6 +1,5 @@
 // screens/contact_info_screen.dart
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart' hide Uint8List;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
@@ -175,19 +174,19 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
       final DateTime now = DateTime.now();
 
       // Upload images and get download URLs
-      // List<String> imageUrls = [];
-      // if (state.contactImages.isNotEmpty) {
-      //   ref.read(contactProvider.notifier).setUploadStatus('Uploading images...');
-      //
-      //   // Upload each image and collect URLs
-      //   imageUrls = await _uploadContactImages(
-      //     contactId: contactId,
-      //     images: state.contactImages,
-      //     onProgress: (progress) {
-      //       ref.read(contactProvider.notifier).setUploadProgress(progress * 0.7); // 70% for images
-      //     },
-      //   );
-      // }
+      List<String> imageUrls = [];
+      if (state.contactImages.isNotEmpty) {
+        ref.read(contactProvider.notifier).setUploadStatus('Uploading images...');
+
+        // Upload each image and collect URLs
+        imageUrls = await _uploadContactImages(
+          contactId: contactId,
+          images: state.contactImages,
+          onProgress: (progress) {
+            ref.read(contactProvider.notifier).setUploadProgress(progress * 0.5); // 70% for images
+          },
+        );
+      }
 
       // Prepare contact data with image URLs
       final contactData = {
@@ -202,8 +201,8 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         'notes': state.notes,
         'status': 'Active',
         'userId': FirebaseAuth.instance.currentUser?.uid,
-        // 'imageUrls': imageUrls, // Add image URLs to the document
-        // 'imageCount': imageUrls.length,
+        'imageUrls': imageUrls, // Add image URLs to the document
+        'imageCount': imageUrls.length,
       };
 
       // Save to Firestore
