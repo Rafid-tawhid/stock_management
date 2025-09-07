@@ -95,7 +95,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ContactInfoScreen()),
+                  MaterialPageRoute(builder: (context) =>  ContactInfoScreen()),
                 );
               },
               tooltip: 'Add New Contact',
@@ -153,7 +153,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ContactInfoScreen()),
+            MaterialPageRoute(builder: (context) =>  ContactInfoScreen()),
           );
         },
         backgroundColor: theme.colorScheme.primary,
@@ -225,7 +225,7 @@ class _ContactListScreenState extends ConsumerState<ContactListScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ContactInfoScreen()),
+                    MaterialPageRoute(builder: (context) => ContactInfoScreen()),
                   );
                 },
                 icon: const Icon(Icons.add, size: 20),
@@ -591,7 +591,7 @@ class _ContactDetailsSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -614,6 +614,9 @@ class _ContactDetailsSheet extends StatelessWidget {
                     ],
                   ),
                 ),
+                IconButton(onPressed: (){
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>ContactInfoScreen(contact: contact,)));
+                }, icon: Icon(Icons.edit))
               ],
             ),
           ),

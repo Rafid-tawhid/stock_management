@@ -2,6 +2,7 @@
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod/riverpod.dart';
 
+import '../models/contact.dart';
 import '../models/contact_model.dart';
 
 
@@ -49,6 +50,20 @@ class ContactNotifier extends StateNotifier<ContactState> {
   void addImages(List<XFile> images) {
     state = state.copyWith(contactImages: [...state.contactImages, ...images]);
   }
+  // In your contact provider class
+  void setContactData(Contact contact) {
+    state = state.copyWith(
+      personName: contact.personName,
+      companyName: contact.companyName,
+      location: contact.location,
+      phoneNumber: contact.phoneNumber,
+      email: contact.email,
+      contactType: contact.contactType,
+      notes: contact.notes,
+      isEditing: true, // Add this flag to track edit mode
+    );
+
+  }
 
   // Remove image
   void removeImage(int index) {
@@ -76,9 +91,33 @@ class ContactNotifier extends StateNotifier<ContactState> {
   void clearForm() {
     state = ContactState();
   }
+
+  // In your ContactNotifier class
+  void resetForNewContact() {
+    state = ContactState(); // Reset to initial state
+  }
+
+  void loadContactForEditing(Contact contact) {
+    state = ContactState(
+      personName: contact.personName,
+      companyName: contact.companyName,
+      location: contact.location,
+      phoneNumber: contact.phoneNumber,
+      email: contact.email,
+      notes: contact.notes,
+      contactType: contact.contactType,
+      contactImages: const [], // Keep images empty or load existing images if needed
+      isLoading: false,
+      uploadProgress: 0.0,
+      uploadStatus: '',
+    );
+  }
 }
 
+
+
 // Provider for contact state
-final contactProvider = StateNotifierProvider<ContactNotifier, ContactState>(
+// Change your provider definition
+final contactProvider = StateNotifierProvider.autoDispose<ContactNotifier, ContactState>(
       (ref) => ContactNotifier(),
 );

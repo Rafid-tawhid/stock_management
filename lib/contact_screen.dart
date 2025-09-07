@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stock_maintain/login_Screen.dart';
+import 'package:stock_maintain/models/contact.dart';
 import 'package:stock_maintain/riverpod/contact_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,7 +17,9 @@ import 'contact_list_screen.dart';
 import 'models/contact_model.dart';
 
 class ContactInfoScreen extends ConsumerStatefulWidget {
-  const ContactInfoScreen({super.key});
+  final Contact? contact;
+
+  ContactInfoScreen({this.contact});
 
   @override
   ConsumerState<ContactInfoScreen> createState() => _ContactInfoScreenState();
@@ -24,23 +27,72 @@ class ContactInfoScreen extends ConsumerStatefulWidget {
 
 class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
   final ImagePicker _imagePicker = ImagePicker();
+  bool _isInitialized = false;
+  String _selectedContactType = 'Business';
+
+  // Text editing controllers
+  late TextEditingController _nameController;
+  late TextEditingController _companyController;
+  late TextEditingController _locationController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _notesController;
 
   // Contact types
-  final List<String> _contactTypes = [
-    'Business',
-    'Personal',
-    'Client',
-    'Supplier',
-    'Colleague',
-    'Friend',
-    'Family',
-    'Other'
-  ];
+  final List<String> _contactTypes = ['Business', 'Personal', 'Client', 'Supplier', 'Colleague', 'Friend', 'Family', 'Other'];
 
   @override
   void initState() {
     super.initState();
+    // Initialize controllers with empty values
+    _nameController = TextEditingController();
+    _companyController = TextEditingController();
+    _locationController = TextEditingController();
+    _phoneController = TextEditingController();
+    _emailController = TextEditingController();
+    _notesController = TextEditingController();
+
     _requestPermissions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Reset provider state when we enter the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final contactNotifier = ref.read(contactProvider.notifier);
+
+      if (widget.contact != null) {
+        // Load contact data for editing
+        contactNotifier.loadContactForEditing(widget.contact!);
+
+        // Update UI controllers
+        _nameController.text = widget.contact!.personName;
+        _companyController.text = widget.contact!.companyName;
+        _locationController.text = widget.contact!.location;
+        _phoneController.text = widget.contact!.phoneNumber;
+        _emailController.text = widget.contact!.email;
+        _notesController.text = widget.contact!.notes;
+        _selectedContactType = widget.contact!.contactType;
+
+        debugPrint('_selectedContactType ${_selectedContactType}');
+      } else {
+        // Reset for new contact
+        contactNotifier.resetForNewContact();
+
+        // Clear controllers
+        _nameController.clear();
+        _companyController.clear();
+        _locationController.clear();
+        _phoneController.clear();
+        _emailController.clear();
+        _notesController.clear();
+        _selectedContactType = 'Business';
+      }
+
+      _isInitialized = true;
+    });
   }
 
   Future<void> _requestPermissions() async {
@@ -61,11 +113,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
   Future<void> _pickImages() async {
     try {
-      final List<XFile> images = await _imagePicker.pickMultiImage(
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 50,
-      );
+      final List<XFile> images = await _imagePicker.pickMultiImage(maxWidth: 1920, maxHeight: 1080, imageQuality: 50);
 
       if (images.isNotEmpty) {
         ref.read(contactProvider.notifier).addImages(images);
@@ -77,12 +125,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
   Future<void> _captureImage() async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 90,
-      );
+      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1080, imageQuality: 90);
 
       if (image != null) {
         ref.read(contactProvider.notifier).addImages([image]);
@@ -154,84 +197,85 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
   Future<void> _saveContact() async {
     final state = ref.read(contactProvider);
 
-    if (state.personName.isEmpty) {
+    // Validate required fields
+    if (_nameController.text.isEmpty) {
       _showError('Please enter person name');
       return;
     }
 
-    if (state.phoneNumber.isEmpty) {
+    if (_phoneController.text.isEmpty) {
       _showError('Please enter phone number');
       return;
     }
 
+    // Set loading state
     ref.read(contactProvider.notifier).setLoading(true);
     ref.read(contactProvider.notifier).setUploadProgress(0.0);
     ref.read(contactProvider.notifier).setUploadStatus('Saving contact...');
 
     try {
-      // Generate unique ID for this contact
-      final String contactId = const Uuid().v4();
-      final DateTime now = DateTime.now();
+      final contactId = widget.contact?.id ?? const Uuid().v4();
+      final now = DateTime.now();
 
-      // Upload images and get download URLs
+      // Upload images only for new contacts
       List<String> imageUrls = [];
-      if (state.contactImages.isNotEmpty) {
+      if (widget.contact == null && state.contactImages.isNotEmpty) {
         ref.read(contactProvider.notifier).setUploadStatus('Uploading images...');
-
-        // Upload each image and collect URLs
         imageUrls = await _uploadContactImages(
           contactId: contactId,
           images: state.contactImages,
           onProgress: (progress) {
-            ref.read(contactProvider.notifier).setUploadProgress(progress * 0.5); // 70% for images
+            ref.read(contactProvider.notifier).setUploadProgress(progress * 0.5);
           },
         );
       }
 
-      // Prepare contact data with image URLs
+      // Prepare contact data
       final contactData = {
         'id': contactId,
         'timestamp': now,
-        'personName': state.personName,
-        'companyName': state.companyName,
-        'location': state.location,
-        'phoneNumber': state.phoneNumber,
-        'email': state.email,
-        'contactType': state.contactType,
-        'notes': state.notes,
+        'personName': _nameController.text,
+        'companyName': _companyController.text,
+        'location': _locationController.text,
+        'phoneNumber': _phoneController.text,
+        'email': _emailController.text,
+        'contactType': _selectedContactType,
+        'notes': _notesController.text,
         'status': 'Active',
         'userId': FirebaseAuth.instance.currentUser?.uid,
-        'imageUrls': imageUrls, // Add image URLs to the document
-        'imageCount': imageUrls.length,
+        if (widget.contact == null) ...{'imageUrls': imageUrls, 'imageCount': imageUrls.length},
       };
 
       // Save to Firestore
-      ref.read(contactProvider.notifier).setUploadStatus('Saving contact details...');
+      ref.read(contactProvider.notifier).setUploadStatus(widget.contact == null ? 'Saving contact details...' : 'Updating contact...');
       ref.read(contactProvider.notifier).setUploadProgress(0.9);
 
-      await FirebaseFirestore.instance
-          .collection('contacts')
-          .doc(contactId)
-          .set(contactData);
+      final contactsCollection = FirebaseFirestore.instance.collection('contacts');
 
+      if (widget.contact == null) {
+        await contactsCollection.doc(contactId).set(contactData);
+        ref.read(contactProvider.notifier).clearForm();
+      } else {
+        debugPrint('contactId ${contactId}');
+        await contactsCollection.doc(contactId).update(contactData);
+        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ContactListScreen()));
+      }
+
+      // Success handling
       ref.read(contactProvider.notifier).setUploadProgress(1.0);
-      ref.read(contactProvider.notifier).setUploadStatus('Contact saved successfully!');
+      ref.read(contactProvider.notifier).setUploadStatus(widget.contact == null ? 'Contact saved successfully!' : 'Contact updated successfully!');
 
-      _showSuccess('Contact "${state.personName}" saved successfully!');
-      ref.read(contactProvider.notifier).clearForm();
+      _showSuccess('Contact "${state.personName}" ${widget.contact == null ? 'saved' : 'updated'} successfully!');
+
     } catch (e) {
-      _showError('Failed to save contact: $e');
+      _showError('Failed to save contact: ${e.toString()}');
     } finally {
       ref.read(contactProvider.notifier).setLoading(false);
     }
   }
 
   //new new
-  Future<List<String>> _uploadContactImages({
-    required String contactId,
-    required List<XFile> images,
-    required Function(double) onProgress,
-  }) async {
+  Future<List<String>> _uploadContactImages({required String contactId, required List<XFile> images, required Function(double) onProgress}) async {
     if (images.isEmpty) return [];
 
     final List<String> downloadUrls = [];
@@ -240,35 +284,21 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
     for (int i = 0; i < images.length; i++) {
       final XFile image = images[i];
-      final String fileName =
-          'contact_${contactId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+      final String fileName = 'contact_${contactId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
 
-      final Reference storageRef = storage
-          .ref()
-          .child('contacts')
-          .child(userId)
-          .child(contactId)
-          .child(fileName);
+      final Reference storageRef = storage.ref().child('contacts').child(userId).child(contactId).child(fileName);
 
       try {
-
         final Uint8List imageData = await image.readAsBytes();
         final SettableMetadata metadata = SettableMetadata(
           contentType: 'image/jpeg',
-          customMetadata: {
-            'uploadedBy': userId,
-            'contactId': contactId,
-            'originalName': image.name,
-            'uploadDate': DateTime.now().toIso8601String(),
-          },
+          customMetadata: {'uploadedBy': userId, 'contactId': contactId, 'originalName': image.name, 'uploadDate': DateTime.now().toIso8601String()},
         );
 
         final UploadTask uploadTask = storageRef.putData(imageData, metadata);
 
         uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-          final double progress = snapshot.totalBytes > 0
-              ? snapshot.bytesTransferred / snapshot.totalBytes
-              : 0;
+          final double progress = snapshot.totalBytes > 0 ? snapshot.bytesTransferred / snapshot.totalBytes : 0;
           final double overallProgress = (i + progress) / images.length;
           onProgress(overallProgress);
         });
@@ -284,30 +314,35 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
     return downloadUrls;
   }
 
-
   void _showError(String message) {
     debugPrint('Error: $message');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 5),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 3)));
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers
+    _nameController.dispose();
+    _companyController.dispose();
+    _locationController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isInitialized && widget.contact != null) {
+        ref.read(contactProvider.notifier).loadContactForEditing(widget.contact!);
+      }
+    });
+
     final state = ref.watch(contactProvider);
     final theme = Theme.of(context);
     return Scaffold(
@@ -317,11 +352,10 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
-
           IconButton(
             icon: const Icon(Icons.list),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context)=>ContactListScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => ContactListScreen()));
             },
             tooltip: 'Show Contact',
           ),
@@ -329,7 +363,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () {
               FirebaseAuth.instance.signOut();
-              Navigator.push(context, CupertinoPageRoute(builder: (context)=>LoginPage()));
+              Navigator.push(context, CupertinoPageRoute(builder: (context) => LoginPage()));
             },
             tooltip: 'Clear Form',
           ),
@@ -352,10 +386,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
-          Text(
-            '${(state.uploadProgress * 100).toStringAsFixed(0)}% complete',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
+          Text('${(state.uploadProgress * 100).toStringAsFixed(0)}% complete', style: const TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
     );
@@ -368,14 +399,10 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-           Center(
+          Center(
             child: Text(
-              'Add New Contact',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              widget.contact == null ? 'Add New Contact' : 'Update Contact Info',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
             ),
           ),
           const SizedBox(height: 20),
@@ -389,7 +416,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
           const SizedBox(height: 24),
 
           // Save Button
-          _buildSaveButton(),
+          _buildSaveButton(widget.contact == null ? false : true),
           const SizedBox(height: 16),
         ],
       ),
@@ -406,15 +433,9 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '📷 Contact Images',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            const Text('📷 Contact Images', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            const Text(
-              'Add photos of the person or business card',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
+            const Text('Add photos of the person or business card', style: TextStyle(fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 16),
 
             // Image Selection Buttons
@@ -427,9 +448,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
                     label: const Text('Gallery'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),
@@ -441,9 +460,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
                     label: const Text('Camera'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),
@@ -453,10 +470,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
             // Selected Images Preview
             if (state.contactImages.isNotEmpty) ...[
-              const Text(
-                'Selected Images',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
+              const Text('Selected Images', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               SizedBox(
                 height: 120,
@@ -470,12 +484,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(state.contactImages[index].path),
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.file(File(state.contactImages[index].path), width: 100, height: 100, fit: BoxFit.cover),
                           ),
                           Positioned(
                             top: 4,
@@ -484,14 +493,8 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
                               onTap: () => ref.read(contactProvider.notifier).removeImage(index),
                               child: Container(
                                 padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.close,
-                                    size: 14,
-                                    color: Colors.white
-                                ),
+                                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                child: const Icon(Icons.close, size: 14, color: Colors.white),
                               ),
                             ),
                           ),
@@ -501,12 +504,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
                               left: 4,
                               child: Text(
                                 'Main',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  backgroundColor: Colors.black54,
-                                ),
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, backgroundColor: Colors.black54),
                               ),
                             ),
                         ],
@@ -532,25 +530,21 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '📋 Contact Details',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            const Text('📋 Contact Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
 
             // Person Name
             TextFormField(
-              initialValue: state.personName,
+
+              controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'Person Name *',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.person),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              onChanged: (value) => ref.read(contactProvider.notifier).updatePersonName(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updatePersonName(value),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter person name';
@@ -562,50 +556,46 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
             // Company Name
             TextFormField(
-              initialValue: state.companyName,
+              controller: _companyController,
               decoration: InputDecoration(
                 labelText: 'Company Name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.business),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              onChanged: (value) => ref.read(contactProvider.notifier).updateCompanyName(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updateCompanyName(value),
             ),
             const SizedBox(height: 12),
 
             // Location
             TextFormField(
-              initialValue: state.location,
+
+              controller: _locationController,
               decoration: InputDecoration(
                 labelText: 'Location',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.location_on),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              onChanged: (value) => ref.read(contactProvider.notifier).updateLocation(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updateLocation(value),
             ),
             const SizedBox(height: 12),
 
             // Phone Number
             TextFormField(
-              initialValue: state.phoneNumber,
+
+              controller: _phoneController,
               decoration: InputDecoration(
                 labelText: 'Phone Number *',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.phone),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               keyboardType: TextInputType.phone,
-              onChanged: (value) => ref.read(contactProvider.notifier).updatePhoneNumber(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updatePhoneNumber(value),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter phone number';
@@ -617,42 +607,40 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
             // Email
             TextFormField(
-              initialValue: state.email,
+
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.email),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               keyboardType: TextInputType.emailAddress,
-              onChanged: (value) => ref.read(contactProvider.notifier).updateEmail(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updateEmail(value),
             ),
             const SizedBox(height: 12),
 
             // Contact Type Dropdown
+            // Dropdown with controller
             DropdownButtonFormField<String>(
-              value: state.contactType,
+              value: _selectedContactType,
               decoration: InputDecoration(
                 labelText: 'Contact Type',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 prefixIcon: const Icon(Icons.category),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               items: _contactTypes.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
+                return DropdownMenuItem<String>(value: value, child: Text(value));
               }).toList(),
               onChanged: (String? newValue) {
                 if (newValue != null) {
-                  ref.read(contactProvider.notifier).updateContactType(newValue);
+                  setState(() {
+                    _selectedContactType = newValue;
+                  });
+                  // ref.read(contactProvider.notifier).updateContactType(newValue);
                 }
               },
             ),
@@ -660,18 +648,16 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
 
             // Notes
             TextFormField(
-              initialValue: state.notes,
+              controller: _notesController,
               decoration: InputDecoration(
                 labelText: 'Notes',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 alignLabelWithHint: true,
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               maxLines: 4,
-              onChanged: (value) => ref.read(contactProvider.notifier).updateNotes(value),
+              // onChanged: (value) => ref.read(contactProvider.notifier).updateNotes(value),
             ),
           ],
         ),
@@ -679,7 +665,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(bool isUpdate) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -688,24 +674,16 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           elevation: 2,
         ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.save, size: 20),
-            SizedBox(width: 8),
-            Text('SAVE CONTACT'),
-          ],
-        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.save, size: 20), SizedBox(width: 8), Text(isUpdate ? 'UPDATE CONTACT' : 'SAVE CONTACT')]),
       ),
     );
+  }
+
+  void checkIfUpdate(Contact contact) {
+    ref.read(contactProvider.notifier).setContactData(contact);
   }
 }

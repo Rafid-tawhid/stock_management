@@ -38,6 +38,7 @@ class ContactState {
     String? notes,
     String? contactType,
     bool? isLoading,
+    bool? isEditing,
     double? uploadProgress,
     String? uploadStatus,
   }) {

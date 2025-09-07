@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     setState(() => loading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text.trim(), password: passwordController.text.trim());
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ContactInfoScreen()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ContactInfoScreen()));
     }
     on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
