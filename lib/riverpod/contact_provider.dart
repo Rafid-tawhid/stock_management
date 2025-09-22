@@ -11,40 +11,7 @@ import '../models/contact_model.dart';
 class ContactNotifier extends StateNotifier<ContactState> {
   ContactNotifier() : super(ContactState());
 
-  // Update person name
-  void updatePersonName(String name) {
-    state = state.copyWith(personName: name);
-  }
 
-  // Update company name
-  void updateCompanyName(String name) {
-    state = state.copyWith(companyName: name);
-  }
-
-  // Update location
-  void updateLocation(String location) {
-    state = state.copyWith(location: location);
-  }
-
-  // Update phone number
-  void updatePhoneNumber(String number) {
-    state = state.copyWith(phoneNumber: number);
-  }
-
-  // Update email
-  void updateEmail(String email) {
-    state = state.copyWith(email: email);
-  }
-
-  // Update notes
-  void updateNotes(String notes) {
-    state = state.copyWith(notes: notes);
-  }
-
-  // Update contact type
-  void updateContactType(String type) {
-    state = state.copyWith(contactType: type);
-  }
 
   // Add images
   void addImages(List<XFile> images) {
@@ -91,7 +58,7 @@ class ContactNotifier extends StateNotifier<ContactState> {
   void clearForm() {
     state = ContactState();
   }
-
+  //
   // In your ContactNotifier class
   void resetForNewContact() {
     state = ContactState(); // Reset to initial state

@@ -683,7 +683,4 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
     );
   }
 
-  void checkIfUpdate(Contact contact) {
-    ref.read(contactProvider.notifier).setContactData(contact);
-  }
 }
