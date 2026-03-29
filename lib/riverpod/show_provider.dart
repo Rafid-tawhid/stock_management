@@ -31,7 +31,7 @@ final filteredContactsProvider = Provider<List<Contact>>((ref) {
     return contact.personName.toLowerCase().contains(searchQuery.toLowerCase()) ||
         contact.companyName.toLowerCase().contains(searchQuery.toLowerCase()) ||
         contact.phoneNumber.contains(searchQuery) ||
-        contact.email.toLowerCase().contains(searchQuery.toLowerCase()) ||
+        contact.notes.toLowerCase().contains(searchQuery.toLowerCase()) ||
         contact.location.toLowerCase().contains(searchQuery.toLowerCase()) ||
         contact.contactType.toLowerCase().contains(searchQuery.toLowerCase());
   }).toList();

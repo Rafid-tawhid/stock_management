@@ -76,7 +76,7 @@ class _ContactInfoScreenState extends ConsumerState<ContactInfoScreen> {
         _notesController.text = widget.contact!.notes;
         _selectedContactType = widget.contact!.contactType;
 
-        debugPrint('_selectedContactType ${_selectedContactType}');
+        debugPrint('_selectedContactType $_selectedContactType');
       } else {
         // Reset for new contact
         contactNotifier.resetForNewContact();

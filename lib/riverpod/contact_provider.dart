@@ -17,20 +17,6 @@ class ContactNotifier extends StateNotifier<ContactState> {
   void addImages(List<XFile> images) {
     state = state.copyWith(contactImages: [...state.contactImages, ...images]);
   }
-  // In your contact provider class
-  void setContactData(Contact contact) {
-    state = state.copyWith(
-      personName: contact.personName,
-      companyName: contact.companyName,
-      location: contact.location,
-      phoneNumber: contact.phoneNumber,
-      email: contact.email,
-      contactType: contact.contactType,
-      notes: contact.notes,
-      isEditing: true, // Add this flag to track edit mode
-    );
-
-  }
 
   // Remove image
   void removeImage(int index) {
